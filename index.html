@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>Synva PWA Chat - Lilysa Edition</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="apple-touch-icon" href="PWA.png">
+    <meta name="theme-color" content="#4285f4"/>
+    <link rel="icon" type="image/png" href="icon/favicon-16x16-dunplab-manifest-28617.png" />
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet"
+          id="bootstrap-css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css"
+          integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+    <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+<div class="container-fluid h-100">
+    <div class="row justify-content-center h-100">
+        <div class="col-sm-12 col-md-8 chat">
+            <div class="card">
+                <div class="card-header msg_head">
+                    <div class="d-flex bd-highlight">
+                        <div class="user_info">
+                            <div>Chat SYNVA - Connecté en tant que <input id="author" type="text" class="type_author" value="Etudiant" /></div>
+                            <p id="count"></p>
+                        </div>
+                    </div>
+                </div>
+                <div id="chat" class="card-body msg_card_body">
+                    <div class="d-flex justify-content-start mb-4">
+                        <div class="msg_cotainer">
+                            Bonjour à tous et bienvenue sur le chat SYNVA
+                            <span class="msg_author">Lucie Clement</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="input-group">
+                        <textarea id="message" class="form-control type_msg" placeholder="Ecrivez un message ..."></textarea>
+                        <div id="send" class="input-group-append">
+                            <span class="input-group-text send_btn"><i class="fas fa-location-arrow"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+    }
+
+    const chat = document.getElementById("chat");
+    const author = document.getElementById("author");
+    const countElement = document.getElementById("count");
+    const messageElement = document.getElementById("message");
+    const sendButton = document.getElementById("send");
+
+    // au changement de nom d'utilisateur, on souhaite réinitialiser le chat pour simuler une nouvelle connexion
+    author.addEventListener('change', () => {
+        initializeChat();
+    }, false);
+
+    const addMessage = (message) => {
+        const isSelfMessage = message.author.toLocaleLowerCase() === author.value.toLowerCase();
+        const container = document.createElement('div');
+        container.innerHTML = `<div class="d-flex ${isSelfMessage ? "justify-content-end" : "justify-content-start"} mb-4">
+                        <div class="${isSelfMessage ? "msg_cotainer_send" : "msg_cotainer"}">
+                            ${message.content}
+                            <span class="msg_author">${message.author}</span>
+                        </div>
+                    </div>`;
+        chat.appendChild(container);
+    }
+
+    const updateCounter = (count) => {
+        count++; // on ajoute au compteur notre message initial
+        countElement.innerText = `${count} message${count > 1 ? "s" : ""}`;
+    }
+
+    sendButton.addEventListener("click", () => {
+        // on parse les messages existants
+        const messages = JSON.parse(localStorage.getItem("messages") || "[]");
+
+        // on y ajoute notre nouveau message
+        const content = messageElement.value;
+        const message = {
+            author: author.value,
+            content
+        }
+        messages.push(message);
+
+        // on efface le champ de saisie pour améliorer l'expérience utilisateur
+        messageElement.value = "";
+
+        // on enregistre
+        localStorage.setItem("messages", JSON.stringify(messages));
+
+        // on oublie pas d'afficher notre nouveau message
+        addMessage(message);
+
+        // et de mettre à jour le nombre total de message dans le chat
+        updateCounter(messages.length);
+
+        // en bonus, on déclenche une notification pour indiquer l'envoi du message
+        new Notification("Message envoyé");
+    });
+
+    const initializeChat = () => {
+        // Nettoyage des messages
+        chat.innerHTML = "";
+
+        // Ajout d'un message initial fixe pour voir un message dès le premier affichage de la page
+        addMessage({
+            author: "Lucie Clement",
+            content: "Bonjour à tous et bienvenue sur le chat SYNVA"
+        });
+
+        // Récupération des anciens messages
+        if (localStorage.getItem('messages')) {
+            const messages = JSON.parse(localStorage.getItem('messages'));
+            console.info(messages);
+            messages.forEach(addMessage);
+            const count = messages.length;
+            updateCounter(count);
+        } else {
+            countElement.innerText = "0 message";
+        }
+    }
+
+    initializeChat();
+
+    if (window.Notification && window.Notification !== 'denied') {
+        Notification.requestPermission(perm => {
+            // on vérifie ensuite que l’utilisateur a accepté l’affichage des notifications
+            if (perm === 'granted') {
+                // on crée une notification
+                new Notification(`Bienvenue ${author.value} sur le chat SYNVA!`);
+            } else {
+                // si l’utilisateur a refusé de recevoir les notifications, on affiche un message dans la console
+                console.warn('Autorisation de recevoir des notifications refusée');
+            }
+        })
+    }
+</script>
+</body>
+</html>
